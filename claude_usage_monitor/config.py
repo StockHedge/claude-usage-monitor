@@ -39,22 +39,29 @@ class Config:
     warn_percent: float = 50.0
     danger_percent: float = 80.0
 
-    # 외형
-    opacity: float = 0.92
-    font_family: str = "Malgun Gothic"
-    font_size: int = 10
+    # 외형 (font_size = 큰 퍼센트 숫자 크기)
+    opacity: float = 0.94
+    font_family: str = "Malgun Gothic"   # 한글 라벨용
+    num_font_family: str = "Consolas"    # 퍼센트 숫자(터미널 느낌)
+    font_size: int = 15
+    corner_radius: int = 12
 
-    # 색상
-    color_bg: str = "#161b22"
-    color_normal: str = "#3fb950"
-    color_warn: str = "#d29922"
-    color_danger: str = "#f85149"
-    color_dim: str = "#8b949e"
+    # 색상 (따뜻한 다크 + Claude 테라코타)
+    color_bg: str = "#23201c"
+    color_border: str = "#3a352e"
+    color_track: str = "#37322b"
+    color_normal: str = "#6fbf73"
+    color_warn: str = "#e0a33b"
+    color_danger: str = "#e5544b"
+    color_dim: str = "#b8ae9e"
 
     # Claude 캐릭터 아이콘
     show_icon: bool = True
-    icon_color: str = "#c15f3c"
-    icon_size: int = 24
+    icon_color: str = "#d97757"
+    icon_size: int = 26
+
+    # 음성 알림 (25%마다 한국어 TTS)
+    voice_enabled: bool = True
 
     # 라이브 요청 User-Agent 버전(감지 실패 시 폴백)
     ua_version_fallback: str = "2.1.197"
