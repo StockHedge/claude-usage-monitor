@@ -45,6 +45,7 @@ class Config:
     num_font_family: str = "Consolas"    # 퍼센트 숫자(터미널 느낌)
     font_size: int = 15
     corner_radius: int = 12
+    ui_scale: float = 1.0  # 모서리 드래그로 조절되는 전체 배율(SCALE_MIN~SCALE_MAX)
 
     # 색상 (따뜻한 다크 + Claude 테라코타)
     color_bg: str = "#23201c"
