@@ -97,4 +97,7 @@ def run_setup() -> None:
         win.eval("tk::PlaceWindow . center")
     except tk.TclError:
         pass
+    win.attributes("-topmost", True)
+    win.lift()
+    win.focus_force()
     win.mainloop()
