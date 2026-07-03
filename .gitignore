@@ -1,0 +1,8 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 로컬 설정/로그는 ~/.claude_usage_monitor 에 저장되므로 리포에는 없음

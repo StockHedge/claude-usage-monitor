@@ -1,0 +1,2 @@
+# 배치 파일은 Windows에서 CRLF로 체크아웃되어야 정상 동작한다.
+*.bat text eol=crlf
