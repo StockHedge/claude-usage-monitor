@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import ctypes
 import logging
 import threading
 import tkinter as tk
@@ -55,6 +56,7 @@ class MonitorApp:
         self._voice_bucket: "int | None" = None
         self._mode: "str | None" = None
         self._w = self._h = 0
+        self._vbounds: "tuple | None" = None
 
         self.root = tk.Tk()
         self.root.title("Claude 5h Usage")
@@ -82,6 +84,7 @@ class MonitorApp:
         self._render(None)
         self._place_window()
         self.root.after(200, self._schedule_poll)
+        self.root.after(1500, self._watchdog)
 
     # ---------- 렌더 ----------
     def _set_opacity(self) -> None:
@@ -198,6 +201,58 @@ class MonitorApp:
             x, y = screen_w - width - 24, 24
         self.root.geometry(f"+{x}+{y}")
 
+    def _virtual_bounds(self):
+        """모든 모니터를 포함한 가상 데스크톱 경계 (x, y, w, h). 실패 시 주 모니터."""
+        try:
+            u = ctypes.windll.user32
+            x = u.GetSystemMetrics(76)   # SM_XVIRTUALSCREEN
+            y = u.GetSystemMetrics(77)   # SM_YVIRTUALSCREEN
+            w = u.GetSystemMetrics(78)   # SM_CXVIRTUALSCREEN
+            h = u.GetSystemMetrics(79)   # SM_CYVIRTUALSCREEN
+            if w > 0 and h > 0:
+                return x, y, w, h
+        except Exception:
+            pass
+        return 0, 0, self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+
+    def _clamp_xy(self, x, y):
+        """창이 화면 밖으로 완전히 나가지 않게 좌표 제한(최소 노출 유지)."""
+        vx, vy, vw, vh = self._vbounds or self._virtual_bounds()
+        minvis = 40
+        x = max(vx - self._w + minvis, min(x, vx + vw - minvis))
+        y = max(vy, min(y, vy + vh - minvis))
+        return int(x), int(y)
+
+    def _ensure_on_screen(self):
+        """저장된 위치가 화면 밖이면(모니터 해제·해상도 변경 등) 기본 위치로 복귀."""
+        try:
+            x, y = self.root.winfo_x(), self.root.winfo_y()
+        except tk.TclError:
+            return
+        w, h = max(self._w, 1), max(self._h, 1)
+        vx, vy, vw, vh = self._virtual_bounds()
+        margin = 24
+        visible = (x < vx + vw - margin and x + w > vx + margin
+                   and y < vy + vh - margin and y + h > vy + margin)
+        if not visible:
+            nx, ny = vx + vw - w - 24, vy + 24
+            self.root.geometry(f"+{nx}+{ny}")
+            self.cfg.window_x, self.cfg.window_y = nx, ny
+            save_config(self.cfg)
+
+    def _watchdog(self):
+        """주기적으로 '맨 앞' 재적용 + 화면 밖 이탈 복구."""
+        if not self._alive:
+            return
+        try:
+            # off→on 재적용으로 topmost 밴드 최상단에 재삽입(포커스는 뺏지 않음)
+            self.root.attributes("-topmost", False)
+            self.root.attributes("-topmost", True)
+        except tk.TclError:
+            pass
+        self._ensure_on_screen()
+        self.root.after(8000, self._watchdog)
+
     def _bind_events(self) -> None:
         cv = self.canvas
         cv.bind("<Button-1>", self._on_press)
@@ -221,6 +276,7 @@ class MonitorApp:
             self._rs = {"x": event.x_root, "y": event.y_root, "scale": self._scale()}
         else:
             self._mode = "move"
+            self._vbounds = self._virtual_bounds()
             self._drag = {"x": event.x_root, "y": event.y_root,
                           "ox": self.root.winfo_x(), "oy": self.root.winfo_y(), "moved": False}
 
@@ -234,7 +290,8 @@ class MonitorApp:
             dy = event.y_root - self._drag["y"]
             if abs(dx) > 2 or abs(dy) > 2:
                 self._drag["moved"] = True
-            self.root.geometry(f"+{self._drag['ox'] + dx}+{self._drag['oy'] + dy}")
+            nx, ny = self._clamp_xy(self._drag["ox"] + dx, self._drag["oy"] + dy)
+            self.root.geometry(f"+{nx}+{ny}")
 
     def _on_release(self, event) -> None:
         if self._mode == "resize":
